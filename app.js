@@ -53,6 +53,8 @@ if(process.env.VERCEL === undefined){
 
         await connectToDatabase();
     });
+} else {
+    await connectToDatabase();
 }
 
 export default app;
