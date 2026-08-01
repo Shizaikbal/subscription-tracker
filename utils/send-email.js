@@ -16,6 +16,7 @@ export const sendReminderEmail = async ({ to, type, subscription }) => {
     planName: subscription.name,
     price: `${subscription.currency} ${subscription.price} (${subscription.frequency})`,
     paymentMethod: subscription.paymentMethod,
+    daysLeft: Math.max(0, dayjs(subscription.renewalDate).diff(dayjs(), 'day')),
   }
 
   const message = template.generateBody(mailInfo);

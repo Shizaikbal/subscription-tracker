@@ -55,7 +55,7 @@ export const testReminder = async (req, res, next) => {
             throw error;
         }
 
-        const emailType = type ?? '1 days before reminder';
+        const emailType = type ?? 'test reminder';
 
         await sendReminderEmail({
             to: subscription.user.email,
