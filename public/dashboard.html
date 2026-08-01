@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — SubDub</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">SubDub</span>
+    <div class="actions">
+      <span class="user-info" id="user-name"></span>
+      <button class="btn btn-ghost" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="alert"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h2 class="mb">Add a Subscription</h2>
+        <form id="sub-form">
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input id="name" type="text" required minlength="3" placeholder="Netflix">
+          </div>
+          <div class="form-group">
+            <label for="price">Price</label>
+            <input id="price" type="number" required min="0" step="0.01" placeholder="9.99">
+          </div>
+          <div class="form-group">
+            <label for="currency">Currency</label>
+            <select id="currency">
+              <option value="INR">INR</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="SAR">SAR</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="frequency">Frequency</label>
+            <select id="frequency">
+              <option value="monthly">Monthly</option>
+              <option value="weekly">Weekly</option>
+              <option value="yearly">Yearly</option>
+              <option value="daily">Daily</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="category">Category</label>
+            <select id="category">
+              <option value="entertainment">Entertainment</option>
+              <option value="productivity">Productivity</option>
+              <option value="education">Education</option>
+              <option value="health">Health</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="paymentMethod">Payment Method</label>
+            <input id="paymentMethod" type="text" required placeholder="Credit Card">
+          </div>
+          <div class="form-group">
+            <label for="startDate">Start Date</label>
+            <input id="startDate" type="date" required>
+          </div>
+          <button class="btn btn-block" type="submit" id="sub-btn">Add Subscription</button>
+        </form>
+      </div>
+
+      <div>
+        <div class="card mb">
+          <h2 class="mb">Upcoming Renewals (next 7 days)</h2>
+          <div id="upcoming-list"><div class="spinner"></div></div>
+        </div>
+
+        <div class="card">
+          <div class="actions" style="justify-content: space-between; margin-bottom: 16px;">
+            <h2>My Subscriptions</h2>
+            <button class="btn btn-ghost" id="test-email-btn" onclick="sendTestEmail()">Send Test Reminder</button>
+          </div>
+          <div id="sub-list"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    if (!requireAuth()) throw new Error('redirecting');
+
+    const alertBox = document.getElementById('alert');
+    const subListEl = document.getElementById('sub-list');
+    const upcomingEl = document.getElementById('upcoming-list');
+    let subscriptions = [];
+    let selectedTestId = null;
+
+    async function loadUser() {
+      const { data } = await api('/users/me');
+      document.getElementById('user-name').textContent = data.name;
+    }
+
+    function statusBadge(status) {
+      return `<span class="badge badge-${escapeHtml(status)}">${escapeHtml(status)}</span>`;
+    }
+
+    function renderSubscriptions() {
+      if (!subscriptions.length) {
+        subListEl.innerHTML = '<div class="empty">No subscriptions yet. Add your first one!</div>';
+        return;
+      }
+      subListEl.innerHTML = subscriptions.map((sub) => `
+        <div class="sub-card">
+          <div>
+            <div class="sub-name">${escapeHtml(sub.name)} ${statusBadge(sub.status)}</div>
+            <div class="sub-meta">${escapeHtml(sub.category)} &middot; renews ${formatDate(sub.renewalDate)} &middot; ${escapeHtml(sub.paymentMethod)}</div>
+          </div>
+          <div class="actions">
+            <span class="sub-price">${escapeHtml(formatPrice(sub))}</span>
+            <button class="btn btn-danger" onclick="cancelSub('${sub._id}')" ${sub.status === 'cancelled' || sub.status === 'expired' ? 'disabled' : ''}>Cancel</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderUpcoming() {
+      api('/subscriptions/upcoming-renewals')
+        .then(({ data }) => {
+          if (!data.length) {
+            upcomingEl.innerHTML = '<div class="empty">No renewals in the next 7 days</div>';
+            return;
+          }
+          upcomingEl.innerHTML = data.map((sub) => `
+            <div class="sub-card">
+              <div>
+                <div class="sub-name">${escapeHtml(sub.name)}</div>
+                <div class="sub-meta">${formatDate(sub.renewalDate)} (${sub.frequency})</div>
+              </div>
+              <span class="sub-price">${escapeHtml(formatPrice(sub))}</span>
+            </div>
+          `).join('');
+        })
+        .catch((err) => showToast(err.message, 'error'));
+    }
+
+    async function loadSubscriptions() {
+      try {
+        const { data } = await api('/subscriptions');
+        subscriptions = data;
+        renderSubscriptions();
+        renderUpcoming();
+      } catch (err) {
+        subListEl.innerHTML = `<div class="empty">${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    async function cancelSub(id) {
+      if (!confirm('Cancel this subscription?')) return;
+      try {
+        await api(`/subscriptions/${id}/cancel`, { method: 'PUT' });
+        showToast('Subscription cancelled');
+        loadSubscriptions();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function sendTestEmail() {
+      if (!subscriptions.length) {
+        showToast('Add a subscription first', 'error');
+        return;
+      }
+      const id = selectedTestId || subscriptions[0]._id;
+      try {
+        const { message } = await api('/workflow/test-reminder', {
+          method: 'POST',
+          body: JSON.stringify({ subscriptionId: id }),
+        });
+        showToast(message);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    document.getElementById('sub-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('sub-btn');
+      btn.disabled = true;
+      btn.textContent = 'Adding...';
+      try {
+        await api('/subscriptions', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: document.getElementById('name').value.trim(),
+            price: Number(document.getElementById('price').value),
+            currency: document.getElementById('currency').value,
+            frequency: document.getElementById('frequency').value,
+            category: document.getElementById('category').value,
+            paymentMethod: document.getElementById('paymentMethod').value.trim(),
+            startDate: document.getElementById('startDate').value,
+          }),
+        });
+        e.target.reset();
+        showToast('Subscription added');
+        loadSubscriptions();
+      } catch (err) {
+        alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add Subscription';
+      }
+    });
+
+    loadUser();
+    loadSubscriptions();
+  </script>
+</body>
+</html>

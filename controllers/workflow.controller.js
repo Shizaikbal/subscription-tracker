@@ -5,6 +5,7 @@ const require = createRequire(import.meta.url);
 const { serve } = require('@upstash/workflow/express');
 
 import Subscription from '../models/subscription.model.js';
+import { sendReminderEmail } from '../utils/send-email.js'
 
 const REMINDERS = [7, 5, 2, 1];
 
@@ -17,7 +18,7 @@ export const sendReminders = serve(async (context) =>{
     const renewalDate = dayjs(subscription.renewalDate);
 
     if(renewalDate.isBefore(dayjs())) {
-        console.log(`Renewal date has passed for the subscripition ${subscriptionId}.Stopping Workflow`);
+        console.log(`Renewal date has passed for the subscription ${subscriptionId}. Stopping Workflow`);
         return;
     }
 
@@ -29,9 +30,47 @@ export const sendReminders = serve(async (context) =>{
         }
 
         await sleepUntilReminder(context, `Reminder ${daysBefore} days before`, reminderDate);
-        await triggerReminder(context, `Reminder ${daysBefore} days before`);
+
+        await triggerReminder(context, `${daysBefore} days before reminder`, subscription);
     }
 });
+
+export const testReminder = async (req, res, next) => {
+    try {
+        const { subscriptionId, type } = req.body;
+
+        const subscription = await Subscription.findById(subscriptionId ?? null).populate('user', 'email name');
+
+        if(subscription){
+            if(subscription.user._id.toString() !== req.user._id.toString()){
+                const error = new Error("You do not have access to this subscription");
+                error.statusCode = 403;
+                throw error;
+            }
+        }
+
+        if(!subscription){
+            const error = new Error("Subscription not found");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const emailType = type ?? '1 days before reminder';
+
+        await sendReminderEmail({
+            to: subscription.user.email,
+            type: emailType,
+            subscription,
+        });
+
+        res.status(200).json({
+            success: true,
+            message: `Test reminder email (${emailType}) sent to ${subscription.user.email}`,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
 
 const fetchSubscription = async (context, subscriptionId) => {
     return await context.run('get subscription', async () => {
@@ -44,8 +83,14 @@ const sleepUntilReminder = async (context, label, date) => {
     await context.sleepUntil(label, date.toDate());
 }
 
-const triggerReminder = async (context, label) => {
-    return await context.run(label, () => {
+const triggerReminder = async (context, label, subscription) => {
+    return await context.run(label, async () => {
         console.log(`Triggering ${label} reminder`);
+
+        await sendReminderEmail({
+            to: subscription.user.email,
+            type: label,
+            subscription,
+        })
     })
 }
