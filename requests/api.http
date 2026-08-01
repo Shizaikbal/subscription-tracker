@@ -1,1 +1,13 @@
-POST http://localhost:5500/api/v1/subscriptions/
+ POST http://localhost:5500/api/v1/subscriptions                                                                                                            
+     Content-Type: application/json                                                                                                                             
+     Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YTY0ZTVkZDM1NzE0NWI5ZjlmZTZlZDQiLCJpYXQiOjE3ODUyOTQxMDgsImV4cCI6MTc4NTM4MDUwOH0.CmZPuE2RwKdteV_jmGXYoosQhqwBCoG7NEv9zwQyhbk                                                                                                                             
+                                                                                                                                                                
+     {                                                                                                                                                          
+         "name": "Jiohotstar",                                                                                                                                     
+         "price": 149,                                                                                                                                        
+         "currency": "INR",                                                                                                                                     
+         "frequency": "monthly",                                                                                                                                
+         "category": "entertainment",                                                                                         
+         "paymentMethod": "Credit Card",                                                                                                                        
+         "startDate": "2026-07-01"                                                                                                
+     }
