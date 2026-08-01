@@ -2,7 +2,7 @@ import aj from '../config/arcjet.js'
 
 const arcjetMiddleware = async (req, res, next) => {
     try{
-        if(req.path.startsWith('/api/v1/workflow')){
+        if(!req.path.startsWith('/api/v1') || req.path.startsWith('/api/v1/workflow')){
             return next();
         }
 

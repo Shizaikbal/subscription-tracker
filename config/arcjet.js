@@ -3,6 +3,11 @@ import { ARCJET_KEY, NODE_ENV } from './env.js';
 
 const mode = NODE_ENV === 'production' ? 'LIVE' : 'DRY_RUN';
 
+// detectBot stays in DRY_RUN: fingerprint-based bot detection can falsely
+// block real users with privacy extensions (e.g. Brave). Monitor it via the
+// Arcjet dashboard instead while shield + rate limiting protect in LIVE mode.
+const botMode = 'DRY_RUN';
+
 const aj = arcjet({
   
   key: ARCJET_KEY, 
@@ -10,7 +15,7 @@ const aj = arcjet({
   rules: [
     shield({ mode }),
     detectBot({
-      mode,
+      mode: botMode,
       allow: [
         "CATEGORY:SEARCH_ENGINE", 
       ],
