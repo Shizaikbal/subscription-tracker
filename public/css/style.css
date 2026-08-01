@@ -6,8 +6,8 @@
   --border: #334155;
   --text: #e2e8f0;
   --muted: #94a3b8;
-  --primary: #7c3aed;
-  --primary-dark: #6d28d9;
+  --primary: #d4a017;
+  --primary-dark: #b8860b;
   --danger: #ef4444;
   --success: #22c55e;
   --warning: #f59e0b;
@@ -64,7 +64,7 @@ input:focus, select:focus { outline: 2px solid var(--primary); border-color: tra
   border: none;
   border-radius: 8px;
   background: var(--primary);
-  color: #fff;
+  color: #241c04;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
@@ -75,7 +75,7 @@ input:focus, select:focus { outline: 2px solid var(--primary); border-color: tra
 
 .btn-block { width: 100%; }
 
-.btn-danger { background: var(--danger); }
+.btn-danger { background: var(--danger); color: #fff; }
 .btn-danger:hover { background: #dc2626; }
 
 .btn-ghost {
