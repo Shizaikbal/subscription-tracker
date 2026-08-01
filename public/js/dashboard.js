@@ -19,6 +19,7 @@ function renderSubscriptions() {
     subListEl.innerHTML = '<div class="empty">No subscriptions yet. Add your first one!</div>';
     return;
   }
+  const cancellable = (status) => status === 'active' || status === 'paused';
   subListEl.innerHTML = subscriptions.map((sub) => `
     <div class="sub-card" data-id="${sub._id}">
       <div>
@@ -27,7 +28,7 @@ function renderSubscriptions() {
       </div>
       <div class="actions">
         <span class="sub-price">${escapeHtml(formatPrice(sub))}</span>
-        <button class="btn btn-danger" data-action="cancel" ${sub.status === 'cancelled' || sub.status === 'expired' ? 'disabled' : ''}>Cancel</button>
+        ${cancellable(sub.status) ? `<button class="btn btn-danger" data-action="cancel">Cancel</button>` : ''}
       </div>
     </div>
   `).join('');
@@ -39,6 +40,10 @@ subListEl.addEventListener('click', (e) => {
   const id = btn.closest('[data-id]').dataset.id;
   cancelSub(id);
 });
+
+document.getElementById('logout-btn').addEventListener('click', logout);
+
+document.getElementById('test-email-btn').addEventListener('click', sendTestEmail);
 
 function renderUpcoming() {
   api('/subscriptions/upcoming-renewals')
@@ -87,10 +92,10 @@ function sendTestEmail() {
     showToast('Add a subscription first', 'error');
     return;
   }
-  const id = subscriptions[0]._id;
+  const target = subscriptions.find((s) => s.status === 'active') || subscriptions[0];
   api('/workflow/test-reminder', {
     method: 'POST',
-    body: JSON.stringify({ subscriptionId: id }),
+    body: JSON.stringify({ subscriptionId: target._id }),
   })
     .then(({ message }) => showToast(message))
     .catch((err) => showToast(err.message, 'error'));

@@ -2,6 +2,12 @@ import Subscription from '../models/subscription.model.js';
 import { workflowClient } from '../config/upstash.js';
 import { SERVER_URL } from '../config/env.js'
 
+const syncExpiredSubscriptions = async (userId = null) => {
+    const query = { status: 'active', renewalDate: { $lt: new Date() } };
+    if (userId) query.user = userId;
+    return Subscription.updateMany(query, { status: 'expired' });
+};
+
 export const createSubscription = async (req, res, next) => {
     try{
         const subscription = await Subscription.create({
@@ -39,6 +45,8 @@ export const createSubscription = async (req, res, next) => {
 
 export const getUserSubscriptions = async (req, res, next) => {
     try{
+        await syncExpiredSubscriptions(req.user._id);
+
         const subscriptions = await Subscription.find({ user: req.user._id });
 
         res.status(200).json({
@@ -52,6 +60,8 @@ export const getUserSubscriptions = async (req, res, next) => {
 
 export const getSubscription = async (req, res, next) => {
     try{
+        await syncExpiredSubscriptions(req.user._id);
+
         const subscription = await Subscription.findById(req.params.id);
 
         if(!subscription) {
@@ -165,6 +175,8 @@ export const cancelSubscription = async (req, res, next) => {
 
 export const getUpcomingRenewals = async (req, res, next) => {
     try{
+        await syncExpiredSubscriptions(req.user._id);
+
         const sevenDaysFromNow = new Date();
         sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
